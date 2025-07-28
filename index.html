@@ -1,0 +1,42 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="app.js"></script>
+  <title>Production Summary Input</title>
+</head>
+<body>
+  <div id="app">
+    <h1>Production Summary Input</h1>
+    <form id="binForm">
+      <label>Date:
+        <input type="date" id="dateInput" required>
+      </label>
+      <label>Hour:
+        <select id="hourInput" required>
+          <option value="">Select</option>
+          ${[...Array(24).keys()].map(h => `<option value="${h}">${h}:00</option>`).join('')}
+        </select>
+      </label>
+      <label>Bins Tipped:
+        <input type="number" id="binsInput" required>
+      </label>
+      <div id="lowBinsSection" style="display: none;">
+        <label>Reason:
+          <input type="text" id="reasonInput">
+        </label>
+        <label>Downtime (min):
+          <input type="number" id="downtimeInput">
+        </label>
+      </div>
+      <button type="submit">Save</button>
+    </form>
+    <h2>Saved Entries</h2>
+    <div id="entries"></div>
+  </div>
+</body>
+</html>
