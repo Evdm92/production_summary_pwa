@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Production Summary Input</title>
+  <style>
+    body {
+      font-family: 'Century Gothic', sans-serif;
+      padding: 20px;
+      background: #fffaf5;
+    }
+    h1 {
+      color: #ff6600;
+    }
+    h2 {
+      margin-top: 30px;
+      color: #ff6600;
+    }
+    input, select, button {
+      margin: 5px 0;
+      padding: 8px;
+      width: 100%;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-family: 'Century Gothic', sans-serif;
+    }
+    button {
+      background-color: #ff6600;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #e65500;
+    }
+    .hidden { display: none; }
+    .entry { border-bottom: 1px solid #ccc; padding: 10px; }
+    .collapsible {
+      background-color: #ffd9b3;
+      cursor: pointer;
+      padding: 10px;
+      width: 100%;
+      border: none;
+      text-align: left;
+      outline: none;
+      font-weight: bold;
+    }
+    .content {
+      padding: 0 10px;
+      display: none;
+      overflow: hidden;
+    }
+    .tab {
+      display: none;
+    }
+    .tab-button {
+      margin: 10px 5px 0 0;
+      padding: 10px;
+      background-color: #ff6600;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    .tab-button:hover {
+      background-color: #e65500;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Production Summary Input</h1>
+  <img src="logo.png" alt="Logo" style="max-width: 150px;" onerror="this.style.display='none'" />
+
+  <!-- Tab Buttons -->
+  <div>
+    <button class="tab-button" onclick="showTab('inputTab')">Input</button>
+    <button class="tab-button" onclick="showTab('reportTab')">Generate Report</button>
+    <button class="tab-button" onclick="checkPin()">Settings</button>
+  </div>
+
+  <!-- Input Tab -->
+  <div id="inputTab" class="tab">
+    <h2>Shift Input</h2>
+    <label>Line Manager Name:</label>
+    <input id="manager" type="text" />
+
+    <label>Shift:</label>
+    <select id="shift">
+      <option value="day">Day</option>
+      <option value="night">Night</option>
+    </select>
+
+    <label>Date:</label>
+    <input id="date" type="date" />
+
+    <label>Hour:</label>
+    <select id="hour"></select>
+
+    <label>Bins Tipped:</label>
+    <input id="binsTipped" type="number" onchange="checkBinsTipped()" />
+
+    <div id="downtimeSection" style="display: none;">
+      <label>Reason for not reaching 60 bins:</label>
+      <input id="reason" type="text" />
+      
+      <label>Downtime (minutes):</label>
+      <input id="downtime" type="number" />
+    </div>
+
+    <label>Average Bin Weight (kg):</label>
+    <input id="binWeight" type="number" />
+
+    <button onclick="saveEntry()">Save Entry</button>
+
+    <button class="collapsible">Show/Hide Saved Entries</button>
+    <div class="content" id="entries"></div>
+  </div>
+
+  <!-- Report Tab -->
+  <div id="reportTab" class="tab">
+    <h2>Generate Shift Report</h2>
+    <label>Filter by Date:</label>
+    <input id="filterDate" type="date" />
+    <button onclick="generateReport()">Generate</button>
+    <div id="reportOutput"></div>
+  </div>
+
+  <!-- Settings Tab -->
+  <div id="settingsTab" class="tab">
+    <h2>Settings</h2>
+    <label>Permanent Employees:</label>
+    <input id="permEmp" type="number" />
+
+    <label>Seasonal Employees:</label>
+    <input id="seasonEmp" type="number" />
+
+    <label>Permanent Hourly Wage:</label>
+    <input id="permWage" type="number" />
+
+    <label>Seasonal Hourly Wage:</label>
+    <input id="seasonWage" type="number" />
+
+    <button onclick="saveSettings()">Save Settings</button>
+  </div>
+
+<script>
+  const shiftData = [];
+
+  function showTab(tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+  }
+
+  function checkPin() {
+    const pin = prompt("Enter settings PIN:");
+    if (pin === "NPA2025!") {
+      showTab('settingsTab');
+    } else {
+      alert("Incorrect PIN.");
+    }
+  }
+
+  function saveSettings() {
+    localStorage.setItem('settings', JSON.stringify({
+      permEmp: +document.getElementById('permEmp').value,
+      seasonEmp: +document.getElementById('seasonEmp').value,
+      permWage: +document.getElementById('permWage').value,
+      seasonWage: +document.getElementById('seasonWage').value
+    }));
+    alert("Settings saved.");
+  }
+
+  function loadSettings() {
+    const s = JSON.parse(localStorage.getItem('settings') || '{}');
+    if (s.permEmp !== undefined) {
+      document.getElementById('permEmp').value = s.permEmp;
+      document.getElementById('seasonEmp').value = s.seasonEmp;
+      document.getElementById('permWage').value = s.permWage;
+      document.getElementById('seasonWage').value = s.seasonWage;
+    }
+  }
+
+  function checkBinsTipped() {
+    const bins = +document.getElementById('binsTipped').value;
+    document.getElementById('downtimeSection').style.display = bins < 60 ? 'block' : 'none';
+  }
+
+  function saveEntry() {
+    const bins = +document.getElementById('binsTipped').value;
+    const needsReason = bins < 60;
+
+    const reason = document.getElementById('reason').value.trim();
+    const downtime = +document.getElementById('downtime').value;
+
+    if (needsReason && (!reason || !downtime)) {
+      alert("Please provide a reason and downtime for less than 60 bins.");
+      return;
+    }
+
+    const entry = {
+      manager: document.getElementById('manager').value,
+      shift: document.getElementById('shift').value,
+      date: document.getElementById('date').value,
+      hour: document.getElementById('hour').value,
+      binsTipped: bins,
+      reason: reason || "",
+      downtime: downtime || 0,
+      binWeight: +document.getElementById('binWeight').value
+    };
+
+    shiftData.push(entry);
+    renderEntries();
+    clearInputFields();
+  }
+
+  function clearInputFields() {
+    document.getElementById('binsTipped').value = '';
+    document.getElementById('reason').value = '';
+    document.getElementById('downtime').value = '';
+    document.getElementById('binWeight').value = '';
+    document.getElementById('downtimeSection').style.display = 'none';
+  }
+
+  function renderEntries() {
+    const entriesDiv = document.getElementById('entries');
+    entriesDiv.innerHTML = "";
+    shiftData.forEach((entry, index) => {
+      entriesDiv.innerHTML += `
+        <div class="entry">
+          ${entry.date} - ${entry.hour}:00 - ${entry.binsTipped} bins - ${entry.binWeight} kg 
+          <button onclick="editEntry(${index})">Edit</button>
+          <button onclick="deleteEntry(${index})">Delete</button>
+        </div>`;
+    });
+  }
+
+  function editEntry(index) {
+    const e = shiftData[index];
+    document.getElementById('manager').value = e.manager;
+    document.getElementById('shift').value = e.shift;
+    document.getElementById('date').value = e.date;
+    document.getElementById('hour').value = e.hour;
+    document.getElementById('binsTipped').value = e.binsTipped;
+    document.getElementById('reason').value = e.reason;
+    document.getElementById('downtime').value = e.downtime;
+    document.getElementById('binWeight').value = e.binWeight;
+    checkBinsTipped();
+    shiftData.splice(index, 1);
+    renderEntries();
+  }
+
+  function deleteEntry(index) {
+    if (confirm("Delete this entry?")) {
+      shiftData.splice(index, 1);
+      renderEntries();
+    }
+  }
+
+  function generateReport() {
+    const filterDate = document.getElementById('filterDate').value;
+    const filtered = shiftData.filter(e => e.date === filterDate);
+    if (!filtered.length) return alert("No entries for selected date.");
+
+    const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+    const hoursWorked = [...new Set(filtered.map(e => e.hour))].length;
+    const overtimeHours = Math.max(0, hoursWorked - 9);
+    const regularHours = Math.min(hoursWorked, 9);
+    const isWeekend = [0, 6].includes(new Date(filterDate).getDay());
+    const isNight = filtered[0].shift === 'night';
+
+    let costPerHour = 0;
+    costPerHour += settings.permEmp * settings.permWage;
+    costPerHour += settings.seasonEmp * settings.seasonWage;
+
+    let totalShiftCost = (costPerHour * regularHours) +
+                         (costPerHour * overtimeHours * 1.5);
+
+    if (isNight) totalShiftCost *= 1.10;
+    if (isWeekend) totalShiftCost *= 1.5;
+
+    const totalKg = filtered.reduce((sum, e) => sum + e.binWeight, 0);
+    const cPerKg = totalKg > 0 ? (totalShiftCost / totalKg).toFixed(2) : 0;
+
+    document.getElementById('reportOutput').innerHTML = `
+      <p><strong>Date:</strong> ${filterDate}</p>
+      <p><strong>Shift:</strong> ${filtered[0].shift}</p>
+      <p><strong>Manager:</strong> ${filtered[0].manager}</p>
+      <p><strong>Permanent Employees:</strong> ${settings.permEmp}</p>
+      <p><strong>Seasonal Employees:</strong> ${settings.seasonEmp}</p>
+      <p><strong>Total Hours Worked:</strong> ${hoursWorked}</p>
+      <p><strong>Total KG Tipped:</strong> ${totalKg}</p>
+      <p><strong>c/kg:</strong> ${cPerKg}</p>
+    `;
+  }
+
+  function populateHourDropdown() {
+    const hourSelect = document.getElementById('hour');
+    hourSelect.innerHTML = '<option value="">--Select--</option>';
+    for (let i = 0; i < 24; i++) {
+      hourSelect.innerHTML += `<option value="${i}">${i}:00</option>`;
+    }
+  }
+
+  // Initialize
+  window.onload = function() {
+    showTab('inputTab');
+    loadSettings();
+    populateHourDropdown();
+
+    document.querySelector(".collapsible").addEventListener("click", function() {
+      const content = this.nextElementSibling;
+      content.style.display = content.style.display === "block" ? "none" : "block";
+    });
+
+    document.getElementById("date").valueAsDate = new Date();
+  }
+</script>
+
+</body>
+</html>
