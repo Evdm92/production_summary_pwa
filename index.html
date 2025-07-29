@@ -103,7 +103,6 @@
     <div id="downtimeSection" style="display: none;">
       <label>Reason for not reaching 60 bins:</label>
       <input id="reason" type="text" />
-      
       <label>Downtime (minutes):</label>
       <input id="downtime" type="number" />
     </div>
@@ -112,7 +111,6 @@
     <input id="binWeight" type="number" />
 
     <button onclick="saveEntry()">Save Entry</button>
-
     <button class="collapsible">Show/Hide Saved Entries</button>
     <div class="content" id="entries"></div>
   </div>
@@ -189,7 +187,6 @@
   function saveEntry() {
     const bins = +document.getElementById('binsTipped').value;
     const needsReason = bins < 60;
-
     const reason = document.getElementById('reason').value.trim();
     const downtime = +document.getElementById('downtime').value;
 
@@ -273,14 +270,19 @@
     costPerHour += settings.permEmp * settings.permWage;
     costPerHour += settings.seasonEmp * settings.seasonWage;
 
-    let totalShiftCost = (costPerHour * regularHours) +
-                         (costPerHour * overtimeHours * 1.5);
-
+    let totalShiftCost = (costPerHour * regularHours) + (costPerHour * overtimeHours * 1.5);
     if (isNight) totalShiftCost *= 1.10;
     if (isWeekend) totalShiftCost *= 1.5;
 
-    const totalKg = filtered.reduce((sum, e) => sum + e.binWeight, 0);
+    let totalKg = 0;
+    let totalBins = 0;
+    filtered.forEach(e => {
+      totalKg += e.binsTipped * e.binWeight;
+      totalBins += e.binsTipped;
+    });
+
     const cPerKg = totalKg > 0 ? (totalShiftCost / totalKg).toFixed(2) : 0;
+    const avgBinsPerHour = hoursWorked > 0 ? (totalBins / hoursWorked).toFixed(2) : 0;
 
     document.getElementById('reportOutput').innerHTML = `
       <p><strong>Date:</strong> ${filterDate}</p>
@@ -289,7 +291,9 @@
       <p><strong>Permanent Employees:</strong> ${settings.permEmp}</p>
       <p><strong>Seasonal Employees:</strong> ${settings.seasonEmp}</p>
       <p><strong>Total Hours Worked:</strong> ${hoursWorked}</p>
-      <p><strong>Total KG Tipped:</strong> ${totalKg}</p>
+      <p><strong>Total Bins Tipped:</strong> ${totalBins}</p>
+      <p><strong>Average Bins per Hour:</strong> ${avgBinsPerHour}</p>
+      <p><strong>Total KG Tipped:</strong> ${totalKg.toFixed(2)}</p>
       <p><strong>c/kg:</strong> ${cPerKg}</p>
     `;
   }
@@ -302,17 +306,14 @@
     }
   }
 
-  // Initialize
   window.onload = function() {
     showTab('inputTab');
     loadSettings();
     populateHourDropdown();
-
     document.querySelector(".collapsible").addEventListener("click", function() {
       const content = this.nextElementSibling;
       content.style.display = content.style.display === "block" ? "none" : "block";
     });
-
     document.getElementById("date").valueAsDate = new Date();
   }
 </script>
